@@ -46,11 +46,9 @@ def memo(func):
     def wrapper_memo(*args):
         if args in wrapper_memo.memo:
             return wrapper_memo.memo[args]
-        else:
-            return wrapper_memo.memo.setdefault(args, func(*args))
+        return wrapper_memo.memo.setdefault(args, func(*args))
     wrapper_memo.memo = {}
     return wrapper_memo
-        
 
 
 def n_ary(func):
@@ -64,8 +62,7 @@ def n_ary(func):
             return args
         elif len(args)==2:
             return func(*args)
-        else:
-            return func(args[0], wrapper_n_ary(*args[1:]))
+        return func(args[0], wrapper_n_ary(*args[1:]))  
     return wrapper_n_ary
 
 
@@ -90,7 +87,6 @@ def trace(prefix):
 
     '''
     def decorator_trace(func):
-        
         @decorator(func)
         def wrapper_trace(*args):
             wrapper_trace.callstack += 1
