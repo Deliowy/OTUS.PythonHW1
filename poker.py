@@ -27,7 +27,12 @@
 # Можно свободно определять свои функции и т.п.
 # -----------------
 
-def hand_rank(hand):
+from typing import Iterable
+import itertools
+from collections import Counter
+
+
+def hand_rank(hand: Iterable[str]):
     """Возвращает значение определяющее ранг 'руки'"""
     ranks = card_ranks(hand)
     if straight(ranks) and flush(hand):
@@ -50,66 +55,115 @@ def hand_rank(hand):
         return (0, ranks)
 
 
-def card_ranks(hand):
+def card_ranks(hand: Iterable[str]):
     """Возвращает список рангов (его числовой эквивалент),
     отсортированный от большего к меньшему"""
-    return
+    rank_map = "23456789TJQKA"
+    return sorted([rank_map.index(card[0]) for card in hand], reverse=True)
 
 
-def flush(hand):
+def flush(hand: Iterable[str]):
     """Возвращает True, если все карты одной масти"""
-    return 
+    return all([card[1] == hand[0][1] for card in hand])
 
 
-def straight(ranks):
+def straight(ranks: Iterable[str]):
     """Возвращает True, если отсортированные ранги формируют последовательность 5ти,
     где у 5ти карт ранги идут по порядку (стрит)"""
-    return
+    for l_rank, r_rank in itertools.pairwise(ranks):
+        if l_rank - r_rank != 1:
+            return False
+    return True
 
 
-def kind(n:int, ranks):
+def kind(n: int, ranks: Iterable[int]):
     """Возвращает первый ранг, который n раз встречается в данной руке.
     Возвращает None, если ничего не найдено"""
-    return
+    ranks_counts = Counter(ranks)
+    for rank in ranks_counts:
+        if ranks_counts[rank] == n:
+            return rank
+    return None
 
 
-def two_pair(ranks):
+def two_pair(ranks: Iterable[int]):
     """Если есть две пары, то возврщает два соответствующих ранга,
     иначе возвращает None"""
-    return
+    ranks_counts = Counter(ranks)
+    most_common_ranks = ranks_counts.most_common(2)
+    if most_common_ranks[0][1] == most_common_ranks[1][1]:
+        return most_common_ranks[0][0], most_common_ranks[1][0]
+    return None
 
 
-def best_hand(hand):
-    """Из "руки" в 7 карт возвращает лучшую "руку" в 5 карт """
-    return 
+def joker_values(joker: str):
+    """Возвращает карты, которые может заменить джокер"""
+    rank_map = "23456789TJQKA"
+    if joker == "?B":
+        suit_map = "SC"
+    else:
+        suit_map = "HD"
+    return list(map(lambda card: "".join(card), itertools.product(rank_map, suit_map)))
 
 
-def best_wild_hand(hand):
+def wild_hands(hand: Iterable[str]):
+    """Возвращает все варианты "дикой" руки"""
+    hands = []
+    partial_hand = list(itertools.filterfalse(lambda card: "?" in card, hand))
+    if "?B" in hand and "?R" in hand:
+        black_joker_variants = joker_values("?B")
+        red_joker_variants = joker_values("?R")
+        jokers_variants = list(itertools.product(black_joker_variants, red_joker_variants))
+        for joker_variant in jokers_variants:
+            joker_value = [*joker_variant]
+            joker_value.extend(partial_hand)
+            hands.append(joker_value)
+    else:
+        (joker,) = filter(lambda card: "?" in card, hand)
+        jokers_variants = joker_values(joker)
+        for joker_variant in jokers_variants:
+            joker_value = [joker_variant]
+            joker_value.extend(partial_hand)
+            hands.append(joker_value)
+    return hands
+
+
+def best_hand(hand: Iterable[str]):
+    """Из "руки" в 7 карт возвращает лучшую "руку" в 5 карт"""
+    hand_combinations = itertools.combinations(hand, 5)
+    hands_ranks = list(map(lambda hand: (hand, hand_rank(hand)), hand_combinations))
+    return max(hands_ranks, key=lambda hand: hand[1])[0]
+
+
+def best_wild_hand(hand: Iterable[str]):
     """best_hand но с джокерами"""
-    return
+    hand_combinations = itertools.combinations(hand, 5)
+    hands = []
+    for hand_combiantion in hand_combinations:
+        if "?B" in hand_combiantion or "?R" in hand_combiantion:
+            hands.extend(wild_hands(hand_combiantion))
+        else:
+            hands.append(hand_combiantion)
+    hands_ranks = list(map(lambda hand: (hand, hand_rank(hand)), hands))
+    return max(hands_ranks, key=lambda hand: hand[1])[0]
 
 
 def test_best_hand():
     print("test_best_hand...")
-    assert (sorted(best_hand("6C 7C 8C 9C TC 5C JS".split()))
-            == ['6C', '7C', '8C', '9C', 'TC'])
-    assert (sorted(best_hand("TD TC TH 7C 7D 8C 8S".split()))
-            == ['8C', '8S', 'TC', 'TD', 'TH'])
-    assert (sorted(best_hand("JD TC TH 7C 7D 7S 7H".split()))
-            == ['7C', '7D', '7H', '7S', 'JD'])
-    print('OK')
+    assert sorted(best_hand("6C 7C 8C 9C TC 5C JS".split())) == ["6C", "7C", "8C", "9C", "TC"]
+    assert sorted(best_hand("TD TC TH 7C 7D 8C 8S".split())) == ["8C", "8S", "TC", "TD", "TH"]
+    assert sorted(best_hand("JD TC TH 7C 7D 7S 7H".split())) == ["7C", "7D", "7H", "7S", "JD"]
+    print("OK")
 
 
 def test_best_wild_hand():
     print("test_best_wild_hand...")
-    assert (sorted(best_wild_hand("6C 7C 8C 9C TC 5C ?B".split()))
-            == ['7C', '8C', '9C', 'JC', 'TC'])
-    assert (sorted(best_wild_hand("TD TC 5H 5C 7C ?R ?B".split()))
-            == ['7C', 'TC', 'TD', 'TH', 'TS'])
-    assert (sorted(best_wild_hand("JD TC TH 7C 7D 7S 7H".split()))
-            == ['7C', '7D', '7H', '7S', 'JD'])
-    print('OK')
+    assert sorted(best_wild_hand("6C 7C 8C 9C TC 5C ?B".split())) == ["7C", "8C", "9C", "JC", "TC"]
+    assert sorted(best_wild_hand("TD TC 5H 5C 7C ?R ?B".split())) == ["7C", "TC", "TD", "TH", "TS"]
+    assert sorted(best_wild_hand("JD TC TH 7C 7D 7S 7H".split())) == ["7C", "7D", "7H", "7S", "JD"]
+    print("OK")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     test_best_hand()
     test_best_wild_hand()
